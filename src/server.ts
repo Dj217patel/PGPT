@@ -33,7 +33,7 @@ import {
   ValidationError
 } from "./security/validation";
 import { mirrorPdfUploadToFirebase } from "./firebase/storageMirror";
-import { runMigrationsIfEnabled } from "./migrate";
+import { runMigrations } from "./migrate";
 import { ensureBootstrapAdmin } from "./auth/bootstrapAdmin";
 import { logError } from "./logger";
 
@@ -456,16 +456,21 @@ app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Not found." });
 });
 
-async function start() {
-  await runMigrationsIfEnabled();
-  await ensureBootstrapAdmin();
-  app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-    console.log(`Server running on http://localhost:${port}`);
-  });
+async function startServer() {
+  try {
+    console.log("Running DB migrations...");
+    await runMigrations();
+    console.log("Migrations complete");
+
+    await ensureBootstrapAdmin();
+
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("Migration failed:", err);
+    process.exit(1);
+  }
 }
 
-start().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+startServer();

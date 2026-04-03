@@ -136,34 +136,66 @@ protectedApi.post(
   (req: Request, res: Response, next: NextFunction) => requireFullAuth(req, res, next),
   upload.single("pdf"),
   async (req: Request, res: Response) => {
+    let stage = "upload-pdf";
     try {
-      if (!req.file?.buffer) {
-        return res.status(400).json({ error: "Please upload a PDF file." });
+      const subjectName = (req.body as { subjectName?: string }).subjectName;
+      const file = req.file;
+      console.log("[UPLOAD-PDF] start", {
+        subjectName,
+        hasFile: !!file,
+        originalname: file?.originalname,
+        mimetype: file?.mimetype,
+        size: file?.size,
+        hasBuffer: !!file?.buffer,
+        bufferBytes: file?.buffer?.byteLength
+      });
+
+      if (!file?.buffer) {
+        return res.status(400).json({
+          error: "No PDF uploaded. Expected multipart field name: 'pdf'."
+        });
       }
-      validatePdfMagic(req.file.buffer);
+
+      console.log("[UPLOAD-PDF] validating PDF magic bytes...");
+      stage = "validate_pdf_magic";
+      validatePdfMagic(file.buffer);
+
       const subjectRaw = (req.body as { subjectName?: string }).subjectName;
       if (subjectRaw !== undefined && String(subjectRaw).trim()) {
         validateSubjectName(subjectRaw);
       }
-      const safeName = sanitizeOriginalFilename(req.file.originalname);
+      const safeName = sanitizeOriginalFilename(file.originalname);
       const uid = sessionUserId(req);
-      const parsed = await pdf(req.file.buffer);
+
+      console.log("[UPLOAD-PDF] parsing PDF with pdf-parse...");
+      stage = "parse_pdf";
+      const parsed = await pdf(file.buffer);
       const extractedText = parsed.text?.trim() || "";
+      console.log("[UPLOAD-PDF] extractedTextLength=", extractedText.length);
+
       if (!extractedText) {
         return res.status(400).json({ error: "Could not extract readable text from the PDF." });
       }
+
+      console.log("[UPLOAD-PDF] summarizing extracted text...");
+      stage = "summarize_text";
       if (FIREBASE_ENABLED) {
         void mirrorPdfUploadToFirebase({
           userId: uid,
           safeFilename: safeName,
-          buffer: req.file.buffer
+          buffer: file.buffer
         });
       }
+
       const summaryText = await summarizeText(extractedText);
+
+      console.log("[UPLOAD-PDF] uploading summary to knowledge base...");
+      stage = "upload_kb";
       const kbFile = await uploadSummaryToKnowledgeBase({
         summaryText,
         originalFileName: safeName
       });
+
       const c = ctxFor(uid);
       c.latestPdfSummary = summaryText;
       c.latestPdfTitle = kbFile.title;
@@ -176,7 +208,20 @@ protectedApi.post(
       if (e instanceof ValidationError) {
         return res.status(400).json({ error: e.message });
       }
-      logError("upload-pdf failed", { err: e instanceof Error ? e.message : String(e) });
+      console.error("[UPLOAD-PDF] caught error (stage=" + stage + "):", e);
+      logError("upload-pdf failed", {
+        stage,
+        err: e instanceof Error ? e.message : String(e)
+      });
+      if (stage === "parse_pdf") {
+        return res.status(400).json({ error: "PDF parsing failed." });
+      }
+      if (stage === "summarize_text") {
+        return res.status(500).json({ error: "PDF summarization failed." });
+      }
+      if (stage === "upload_kb") {
+        return res.status(500).json({ error: "Knowledge base upload failed." });
+      }
       return res.status(500).json({ error: "Could not process PDF." });
     }
   }

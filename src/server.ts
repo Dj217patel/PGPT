@@ -139,7 +139,7 @@ protectedApi.use(apiLimiter);
 protectedApi.post(
   "/upload-pdf",
   uploadLimiter,
-  (req, res, next) => requireFullAuth(req, res, next),
+  (req: Request, res: Response, next: NextFunction) => requireFullAuth(req, res, next),
   upload.single("pdf"),
   async (req: Request, res: Response) => {
     try {
@@ -255,7 +255,9 @@ protectedApi.post(
     const c = ctxFor(uid);
 
     const chatText = recentMessages.length
-      ? recentMessages.map((m) => `${m.role.toUpperCase()}: ${m.message}`).join("\n")
+      ? recentMessages
+          .map((m: { role: string; message: string }) => `${m.role.toUpperCase()}: ${m.message}`)
+          .join("\n")
       : "No recent chat messages found.";
 
     const introduction = `These notes are generated for the subject "${name}" using the uploaded document and the saved conversation with Judo. They are written in a study-friendly format for revision and exam preparation.`;
@@ -348,9 +350,9 @@ ${conclusion}
 protectedApi.post(
   "/previous-paper/analyze",
   uploadLimiter,
-  (req, res, next) => requireFullAuth(req, res, next),
+  (req: Request, res: Response, next: NextFunction) => requireFullAuth(req, res, next),
   upload.single("pdf"),
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       if (!req.file?.buffer) {
         return res.status(400).json({ error: "Please upload a previous paper PDF." });

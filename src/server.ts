@@ -20,7 +20,7 @@ import { createSessionMiddleware } from "./auth/sessionMiddleware";
 import { requireFullAuth, sessionUserId } from "./auth/authMiddleware";
 import { authRouter } from "./auth/authRoutes";
 import { adminRouter } from "./admin/adminRoutes";
-import { csrfProtectionMiddleware } from "./security/csrf";
+import { csrfProtectionMiddleware, createCsrfToken, ensureCsrfSecret } from "./security/csrf";
 import { apiLimiter, uploadLimiter } from "./security/rateLimiters";
 import {
   validateSubjectName,
@@ -63,41 +63,35 @@ const FIREBASE_ENABLED = process.env.FIREBASE_ENABLED === "true";
 console.log("Server boot started");
 console.log(`Firebase enabled: ${FIREBASE_ENABLED}`);
 
-if (process.env.TRUST_PROXY === "1") {
-  app.set("trust proxy", 1);
-}
+app.set("trust proxy", 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || `http://localhost:${port}`,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const raw = process.env.CORS_ORIGIN;
+      if (!raw) return callback(null, true);
+      const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      return allowed.includes(origin) ? callback(null, true) : callback(null, false);
+    },
     credentials: true
   })
 );
-app.use(express.json({ limit: "2mb" }));
 app.use(createSessionMiddleware());
+app.use(express.json({ limit: "2mb" }));
+
+app.get("/api/csrf-token", (req: Request, res: Response) => {
+  ensureCsrfSecret(req);
+  console.log("[CSRF] generated token for GET /api/csrf-token");
+  res.json({ csrfToken: createCsrfToken(req) });
+});
 
 app.use(express.static(path.resolve(__dirname, "../public"), { index: false }));
 console.log("Static/public routes mounted");
 
 app.get("/login", (_req, res) => {
-  const loginFile = path.join(publicRoot, "login.html");
-  console.log("[LOGIN] __dirname =", __dirname);
-  console.log("[LOGIN] publicRoot =", publicRoot);
-  console.log("[LOGIN] loginFile =", loginFile);
-  console.log("[LOGIN] exists =", fs.existsSync(loginFile));
-
-  res.sendFile(loginFile, (err) => {
-    if (err) {
-      console.error("[LOGIN] sendFile failed:", err);
-      return res.status(500).json({
-        error: "LOGIN_SEND_FAILED",
-        message: err.message,
-        path: loginFile,
-        exists: fs.existsSync(loginFile)
-      });
-    }
-  });
+  res.sendFile("login.html", { root: publicRoot });
 });
 
 app.use("/auth", authRouter);
@@ -457,20 +451,27 @@ app.use((_req: Request, res: Response) => {
 });
 
 async function startServer() {
+  const isProd = process.env.NODE_ENV === "production";
+
   try {
     console.log("Running DB migrations...");
     await runMigrations();
     console.log("Migrations complete");
-
-    await ensureBootstrapAdmin();
-
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-    });
   } catch (err) {
     console.error("Migration failed:", err);
-    process.exit(1);
+    if (isProd) process.exit(1);
   }
+
+  try {
+    await ensureBootstrapAdmin();
+  } catch (err) {
+    console.error("Bootstrap admin failed:", err);
+    if (isProd) process.exit(1);
+  }
+
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
 }
 
 startServer();

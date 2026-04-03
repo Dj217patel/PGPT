@@ -422,7 +422,7 @@
     }
 
     async function refreshCsrf() {
-      const res = await fetch("/auth/csrf-token", { credentials: "same-origin" });
+      const res = await fetch("/api/csrf-token", { credentials: "include" });
       if (res.status === 401) {
         window.location.href = "/login";
         throw new Error("auth");
@@ -435,10 +435,10 @@
       await refreshCsrf();
       const res = await fetch(url, {
         method: "POST",
-        credentials: "same-origin",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken
+          "CSRF-Token": csrfToken
         },
         body: JSON.stringify(body)
       });
@@ -453,8 +453,8 @@
       await refreshCsrf();
       const res = await fetch(url, {
         method: "POST",
-        credentials: "same-origin",
-        headers: { "X-CSRF-Token": csrfToken },
+        credentials: "include",
+        headers: { "CSRF-Token": csrfToken },
         body: formData
       });
       if (res.status === 401) {
@@ -496,7 +496,7 @@
 
     async function loadFolders() {
       try {
-        const res = await fetch("/folders", { credentials: "same-origin" });
+        const res = await fetch("/folders", { credentials: "include" });
         if (res.status === 401) {
           window.location.href = "/login";
           return;
@@ -745,10 +745,10 @@
         await refreshCsrf();
         await fetch("/auth/logout", {
           method: "POST",
-          credentials: "same-origin",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken
+            "CSRF-Token": csrfToken
           },
           body: "{}"
         });
@@ -797,7 +797,7 @@
       const out = document.getElementById("auditOut");
       out.textContent="Loading…";
       try {
-        const res = await fetch("/admin/audit-log?limit=200", { credentials: "same-origin" });
+        const res = await fetch("/admin/audit-log?limit=200", { credentials: "include" });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           out.textContent = data.error || "Not authorized.";
@@ -831,7 +831,7 @@
 
     window.addEventListener("load", async () => {
       try {
-        const me = await fetch("/auth/me", { credentials: "same-origin" });
+        const me = await fetch("/auth/me", { credentials: "include" });
         const meData = await me.json();
         if (!meData.authenticated || !meData.user || !meData.user.mfaVerified || meData.user.mustEnrollMfa) {
           window.location.href = "/login";

@@ -30,7 +30,8 @@ export function createSessionMiddleware() {
     cookie: {
       httpOnly: true,
       secure: isProd,
-      sameSite: "lax",
+      // Render frontend/backend are often cross-site; allow cookies across origins in production.
+      sameSite: isProd ? "none" : "lax",
       maxAge: ms
     }
   });

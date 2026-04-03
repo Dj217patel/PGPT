@@ -35,7 +35,7 @@ import { csrfProtectionMiddleware } from "../security/csrf";
 export const authRouter = Router();
 
 authRouter.use((req, res, next) => {
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
+  if (["POST", "PUT", "DELETE"].includes(req.method)) {
     return csrfProtectionMiddleware(req, res, next);
   }
   next();

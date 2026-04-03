@@ -5,6 +5,7 @@ const tokens = new CsrfTokens();
 
 export function ensureCsrfSecret(req: Request): void {
   if (!req.session.csrfSecret) {
+    console.log("[CSRF] generating csrfSecret for session");
     req.session.csrfSecret = tokens.secretSync();
   }
 }
@@ -25,9 +26,15 @@ export function csrfProtectionMiddleware(req: Request, res: Response, next: Next
   if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
     return next();
   }
-  const headerRaw = req.headers["x-csrf-token"];
+  const headerRaw = req.headers["x-csrf-token"] || req.headers["csrf-token"];
   const token = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
   if (!verifyCsrfToken(req, token)) {
+    console.error("[CSRF] invalid/missing token", {
+      method: req.method,
+      path: req.path,
+      headerPresent: !!token,
+      hasSessionSecret: !!req.session.csrfSecret
+    });
     return res.status(403).json({ error: "Invalid or missing CSRF token." });
   }
   next();

@@ -1,0 +1,44 @@
+{
+  "name": "judo-kb",
+  "version": "1.0.0",
+  "description": "PDF upload + summary + Botpress Knowledge Base integration",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node --files src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "migrate": "ts-node src/migrate.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-pg-simple": "^10.0.0",
+    "cors": "^2.8.5",
+    "csrf": "^3.1.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.3.2",
+    "express-session": "^1.19.0",
+    "firebase-admin": "^13.7.0",
+    "helmet": "^8.1.0",
+    "multer": "^1.4.5-lts.1",
+    "otplib": "^13.4.0",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.20.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/express-session": "^1.18.2",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.20.0",
+    "@types/qrcode": "^1.5.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "teeny-request": "10.1.2"
+  }
+}

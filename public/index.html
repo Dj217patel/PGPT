@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Judo Study Assistant</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f8fafc;
+      color: #111827;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 20px 24px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      color: #cbd5e1;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      position: sticky;
+      top: 20px;
+    }
+
+    .tab-btn {
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #111827;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .tab-btn.active {
+      background: #2563eb;
+      color: white;
+    }
+
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section {
+      display: none;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section h2 {
+      margin-top: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .reader-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 0.9fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      background: #fafafa;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+    }
+
+    button {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+
+    .secondary-btn {
+      background: #111827;
+    }
+
+    .secondary-btn:disabled {
+      background: #6b7280;
+    }
+
+    .muted {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .output {
+      white-space: pre-wrap;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+      min-height: 120px;
+    }
+
+    .topics-list,
+    .folder-list {
+      padding-left: 20px;
+      margin: 0;
+    }
+
+    .topics-list li,
+    .folder-list li {
+      margin-bottom: 8px;
+    }
+
+    .folder-chip {
+      display: inline-block;
+      background: #e0ecff;
+      color: #1d4ed8;
+      border-radius: 999px;
+      padding: 6px 12px;
+      margin: 0 8px 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .pdf-viewer {
+      width: 100%;
+      height: 700px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: white;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 1100px) {
+      .reader-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs {
+        position: static;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1>Judo Study Assistant</h1>
+        <p>Chat with documents, generate notes, and analyze previous papers.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <span class="muted" id="whoami" style="color:#cbd5e1;font-size:13px;"></span>
+        <button type="button" id="logoutBtn" class="secondary-btn" style="padding:8px 14px;">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="layout">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="chat-section"> Document Chat</button>
+        <button class="tab-btn" data-tab="notes-section"> Notes Generator</button>
+        <button class="tab-btn" data-tab="paper-section"> Previous Paper Analyzer</button>
+        <button class="tab-btn" data-tab="account-section"> Account</button>
+      </div>
+
+      <div class="content-area">
+        <div class="card">
+          <h3>Saved Subject Folders</h3>
+          <p class="muted">All created subject folders are shown below.</p>
+          <div id="savedFoldersContainer"></div>
+        </div>
+
+        <section id="chat-section" class="section active">
+          <h2>Section 1 — Chat with Document</h2>
+          <p class="muted">Upload a PDF, read it on screen, and ask doubts whenever needed.</p>
+
+          <div class="card">
+            <h3>Upload Study PDF</h3>
+            <input type="text" id="studySubjectNameInput" placeholder="Enter subject name for this PDF (example: Operating System)" />
+            <input type="file" id="studyPdfFile" accept="application/pdf" />
+            <button id="uploadStudyPdfBtn">Upload PDF</button>
+            <button id="doneReadingBtn" class="secondary-btn hidden" type="button">Done</button>
+            <p class="muted" id="studyUploadStatus">No file uploaded yet.</p>
+          </div>
+
+          <div id="documentReaderArea" class="reader-grid hidden">
+            <div class="card">
+              <h3>Document Viewer</h3>
+              <iframe id="pdfViewer" class="pdf-viewer" title="PDF Viewer"></iframe>
+            </div>
+
+            <div class="card">
+              <h3>AI Assistant Help</h3>
+              <p class="muted">
+                Read the document on the left. Whenever you have a doubt, click the button below and ask in the Botpress chat bubble.
+              </p>
+
+              <button id="askDoubtBtn" type="button">Ask Doubt</button>
+
+              <div style="margin-top: 16px;">
+                <h4>Summary Preview</h4>
+                <div class="output" id="studySummaryPreview"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="notes-section" class="section">
+          <h2>Section 2 — Generate Notes from Chat + PDF</h2>
+          <p class="muted">Enter a subject name or select an existing folder. Notes will be generated and stored automatically.</p>
+
+          <div class="grid">
+            <div class="card">
+              <h3>Subject Folder</h3>
+              <input type="text" id="subjectNameInput" placeholder="Enter subject name (example: Operating System)" />
+
+              <label class="muted" for="folderSelect">Or select existing folder:</label>
+              <select id="folderSelect">
+                <option value="">Select folder</option>
+              </select>
+
+              <button id="generateNotesBtn">Generate and Save Notes</button>
+              <p class="muted" id="notesStatus">Notes not generated yet.</p>
+            </div>
+
+            <div class="card">
+              <h3>Generated Notes</h3>
+              <div class="output" id="notesOutput"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="account-section" class="section">
+          <h2>Account security</h2>
+          <p class="muted">Change your password (12+ characters, mixed case, number, symbol).</p>
+          <div class="card" style="max-width:480px;">
+            <label class="muted" for="curPwd">Current password</label>
+            <input type="password" id="curPwd" autocomplete="current-password" />
+            <label class="muted" for="newPwd">New password</label>
+            <input type="password" id="newPwd" autocomplete="new-password" />
+            <button type="button" id="changePwdBtn">Update password</button>
+            <p class="muted" id="pwdStatus"></p>
+          </div>
+
+          <div class="card hidden" id="optionalMfaWrap" style="max-width:480px;margin-top:16px;">
+            <h3>Optional authenticator MFA</h3>
+            <p class="muted">Adds a second step after password on sign-in.</p>
+            <button type="button" id="acctMfaStart">Generate QR code</button>
+            <img id="acctMfaQr" alt="MFA QR" style="display:block;margin-top:10px;max-width:220px;border-radius:8px;" />
+            <label class="muted" for="acctMfaCode">Confirm with 6-digit code</label>
+            <input type="text" id="acctMfaCode" inputmode="numeric" autocomplete="one-time-code" />
+            <button type="button" id="acctMfaConfirm">Enable MFA</button>
+            <p class="muted" id="acctMfaStatus"></p>
+          </div>
+
+          <div class="card hidden" id="adminAuditWrap" style="margin-top:16px;">
+            <h3>Admin audit log</h3>
+            <p class="muted">Redacted application events (memory buffer, last ~500 lines).</p>
+            <button type="button" id="loadAuditBtn" class="secondary-btn">Refresh log</button>
+            <div class="output" id="auditOut" style="margin-top:12px;max-height:320px;overflow:auto;font-size:12px;"></div>
+          </div>
+        </section>
+
+        <section id="paper-section" class="section">
+          <h2>Section 3 — Previous Paper Analyzer</h2>
+          <p class="muted">Upload a previous paper, extract important topics, then generate proper notes for those topics.</p>
+
+          <div class="grid">
+            <div class="card">
+              <h3>Upload Previous Paper</h3>
+              <input type="file" id="previousPaperFile" accept="application/pdf" />
+              <button id="uploadPreviousPaperBtn">Analyze Previous Paper</button>
+              <p class="muted" id="paperStatus">No previous paper uploaded yet.</p>
+            </div>
+
+            <div class="card">
+              <h3>Important Topics</h3>
+              <ul class="topics-list" id="topicsList"></ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 20px;">
+            <h3>Topic-wise Notes</h3>
+            <button id="generatePaperNotesBtn">Generate Notes from Topics</button>
+            <div class="output" id="paperNotesOutput" style="margin-top: 12px;"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let csrfToken = "";
+    let currentConversationId = "default_session";
+    let extractedTopics = [];
+    let currentPdfObjectUrl = "";
+
+    function safeTextFromMessage(message) {
+      if (!message) return "";
+      if (typeof message === "string") return message;
+      if (typeof message.text === "string") return message.text;
+      if (typeof message.payload?.text === "string") return message.payload.text;
+      if (typeof message.preview === "string") return message.preview;
+
+      if (Array.isArray(message.payload?.blocks)) {
+        const textBlock = message.payload.blocks.find(
+          (block) => typeof block?.text === "string" && block.text.trim()
+        );
+        if (textBlock) return textBlock.text;
+      }
+
+      return "";
+    }
+
+    function detectRole(message) {
+      const candidate =
+        message?.direction ||
+        message?.role ||
+        message?.author ||
+        message?.sender ||
+        message?.type;
+
+      const normalized = String(candidate || "").toLowerCase();
+
+      if (
+        normalized.includes("user") ||
+        normalized.includes("client") ||
+        normalized.includes("visitor") ||
+        normalized.includes("outgoing")
+      ) {
+        return "user";
+      }
+
+      return "assistant";
+    }
+
+    async function refreshCsrf() {
+      const res = await fetch("/auth/csrf-token", { credentials: "same-origin" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        throw new Error("auth");
+      }
+      const data = await res.json();
+      csrfToken = data.csrfToken || "";
+    }
+
+    async function postJson(url, body) {
+      await refreshCsrf();
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify(body)
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        throw new Error("auth");
+      }
+      return res;
+    }
+
+    async function postFormData(url, formData) {
+      await refreshCsrf();
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "X-CSRF-Token": csrfToken },
+        body: formData
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        throw new Error("auth");
+      }
+      return res;
+    }
+
+    async function saveChatMessageToBackend(message) {
+      const text = safeTextFromMessage(message);
+      if (!text.trim()) return;
+
+      const role = detectRole(message);
+
+      try {
+        await postJson("/chat/save-message", {
+          sessionId: currentConversationId,
+          role,
+          message: text
+        });
+      } catch (error) {
+        console.error("Failed to save chat message", error);
+      }
+    }
+
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const sections = document.querySelectorAll(".section");
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabButtons.forEach((b) => b.classList.remove("active"));
+        sections.forEach((s) => s.classList.remove("active"));
+
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    async function loadFolders() {
+      try {
+        const res = await fetch("/folders", { credentials: "same-origin" });
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        const data = await res.json();
+
+        const folderSelect = document.getElementById("folderSelect");
+        const savedFoldersContainer = document.getElementById("savedFoldersContainer");
+
+        folderSelect.innerHTML = `<option value="">Select folder</option>`;
+        savedFoldersContainer.innerHTML = "";
+
+        const folders = data.folders || [];
+
+        if (!folders.length) {
+          savedFoldersContainer.innerHTML = `<p class="muted">No folders created yet.</p>`;
+          return;
+        }
+
+        folders.forEach((folder) => {
+          const option = document.createElement("option");
+          option.value = folder.subject_name;
+          option.textContent = folder.subject_name;
+          folderSelect.appendChild(option);
+
+          const chip = document.createElement("span");
+          chip.className = "folder-chip";
+          chip.textContent = folder.subject_name;
+          chip.addEventListener("click", () => {
+            document.getElementById("subjectNameInput").value = folder.subject_name;
+            document.getElementById("studySubjectNameInput").value = folder.subject_name;
+            folderSelect.value = folder.subject_name;
+          });
+          savedFoldersContainer.appendChild(chip);
+        });
+      } catch (error) {
+        console.error("Could not load folders");
+      }
+    }
+
+    const uploadStudyPdfBtn = document.getElementById("uploadStudyPdfBtn");
+    const doneReadingBtn = document.getElementById("doneReadingBtn");
+    const askDoubtBtn = document.getElementById("askDoubtBtn");
+    const studySubjectNameInput = document.getElementById("studySubjectNameInput");
+    const studyPdfFile = document.getElementById("studyPdfFile");
+    const studyUploadStatus = document.getElementById("studyUploadStatus");
+    const studySummaryPreview = document.getElementById("studySummaryPreview");
+    const pdfViewer = document.getElementById("pdfViewer");
+    const documentReaderArea = document.getElementById("documentReaderArea");
+
+    uploadStudyPdfBtn.addEventListener("click", async () => {
+      const file = studyPdfFile.files[0];
+      const subjectName = studySubjectNameInput.value.trim();
+
+      if (!subjectName) {
+        alert("Please enter a subject name for this PDF.");
+        return;
+      }
+
+      if (!file) {
+        alert("Please choose a study PDF first.");
+        return;
+      }
+
+      uploadStudyPdfBtn.disabled = true;
+      studyUploadStatus.textContent = "Uploading PDF and preparing it for Judo...";
+      studySummaryPreview.textContent = "";
+
+      try {
+        if (currentPdfObjectUrl) {
+          URL.revokeObjectURL(currentPdfObjectUrl);
+        }
+
+        currentPdfObjectUrl = URL.createObjectURL(file);
+        pdfViewer.src = currentPdfObjectUrl;
+        documentReaderArea.classList.remove("hidden");
+        doneReadingBtn.classList.remove("hidden");
+
+        const formData = new FormData();
+        formData.append("pdf", file);
+        formData.append("subjectName", subjectName);
+
+        const res = await postFormData("/upload-pdf", formData);
+        const data = await res.json();
+
+        if (!res.ok) {
+          studyUploadStatus.textContent = `Error: ${data.error || "Upload failed"}`;
+          return;
+        }
+
+        studyUploadStatus.textContent =
+          `${data.message} You can now read the document on screen and click "Ask Doubt" whenever needed.`;
+
+        studySummaryPreview.textContent = data.preview || "";
+        await loadFolders();
+      } catch (error) {
+        studyUploadStatus.textContent = "Something went wrong while uploading the PDF.";
+      } finally {
+        uploadStudyPdfBtn.disabled = false;
+      }
+    });
+
+    doneReadingBtn.addEventListener("click", () => {
+      alert("Document is ready. You can keep reading it on screen and use Ask Doubt whenever needed.");
+    });
+
+    askDoubtBtn.addEventListener("click", () => {
+      alert("Use the Botpress chat bubble at the bottom-right to ask your doubt.");
+    });
+
+    const generateNotesBtn = document.getElementById("generateNotesBtn");
+    const subjectNameInput = document.getElementById("subjectNameInput");
+    const folderSelect = document.getElementById("folderSelect");
+    const notesStatus = document.getElementById("notesStatus");
+    const notesOutput = document.getElementById("notesOutput");
+
+    folderSelect.addEventListener("change", () => {
+      if (folderSelect.value) {
+        subjectNameInput.value = folderSelect.value;
+      }
+    });
+
+    generateNotesBtn.addEventListener("click", async () => {
+      const subjectName = subjectNameInput.value.trim() || folderSelect.value.trim();
+
+      if (!subjectName) {
+        alert("Please enter a subject name or select a folder.");
+        return;
+      }
+
+      generateNotesBtn.disabled = true;
+      notesStatus.textContent = "Generating detailed notes...";
+      notesOutput.textContent = "";
+
+      try {
+        const resUpsert = await postJson("/folders/upsert", { subjectName });
+        if (!resUpsert.ok) {
+          const d0 = await resUpsert.json().catch(() => ({}));
+          notesStatus.textContent = `Error: ${d0.error || "Folder save failed"}`;
+          return;
+        }
+
+        const res = await postJson("/notes/generate", {
+          subjectName,
+          sessionId: currentConversationId
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          notesStatus.textContent = `Error: ${data.error || "Notes generation failed"}`;
+          return;
+        }
+
+        notesStatus.textContent = `Notes generated and saved in folder: ${subjectName}`;
+        notesOutput.textContent = data.notes || "";
+
+        await loadFolders();
+      } catch (error) {
+        notesStatus.textContent = "Something went wrong while generating notes.";
+      } finally {
+        generateNotesBtn.disabled = false;
+      }
+    });
+
+    const uploadPreviousPaperBtn = document.getElementById("uploadPreviousPaperBtn");
+    const previousPaperFile = document.getElementById("previousPaperFile");
+    const paperStatus = document.getElementById("paperStatus");
+    const topicsList = document.getElementById("topicsList");
+    const generatePaperNotesBtn = document.getElementById("generatePaperNotesBtn");
+    const paperNotesOutput = document.getElementById("paperNotesOutput");
+
+    uploadPreviousPaperBtn.addEventListener("click", async () => {
+      const file = previousPaperFile.files[0];
+
+      if (!file) {
+        alert("Please choose a previous paper PDF first.");
+        return;
+      }
+
+      uploadPreviousPaperBtn.disabled = true;
+      paperStatus.textContent = "Analyzing previous paper...";
+      topicsList.innerHTML = "";
+      paperNotesOutput.textContent = "";
+      extractedTopics = [];
+
+      try {
+        const formData = new FormData();
+        formData.append("pdf", file);
+
+        const res = await postFormData("/previous-paper/analyze", formData);
+        const data = await res.json();
+
+        if (!res.ok) {
+          paperStatus.textContent = `Error: ${data.error || "Analysis failed"}`;
+          return;
+        }
+
+        extractedTopics = data.topics || [];
+        paperStatus.textContent = "Important topics extracted successfully.";
+
+        if (!extractedTopics.length) {
+          topicsList.innerHTML = "<li>No topics found.</li>";
+        } else {
+          extractedTopics.forEach((topic) => {
+            const li = document.createElement("li");
+            li.textContent = topic;
+            topicsList.appendChild(li);
+          });
+        }
+      } catch (error) {
+        paperStatus.textContent = "Something went wrong while analyzing the previous paper.";
+      } finally {
+        uploadPreviousPaperBtn.disabled = false;
+      }
+    });
+
+    generatePaperNotesBtn.addEventListener("click", async () => {
+      if (!extractedTopics.length) {
+        alert("Please analyze a previous paper first.");
+        return;
+      }
+
+      generatePaperNotesBtn.disabled = true;
+      paperNotesOutput.textContent = "Generating topic-wise notes...";
+
+      try {
+        const res = await postJson("/previous-paper/generate-notes", { topics: extractedTopics });
+        const data = await res.json();
+
+        if (!res.ok) {
+          paperNotesOutput.textContent = `Error: ${data.error || "Could not generate notes"}`;
+          return;
+        }
+
+        paperNotesOutput.textContent = data.notes || "";
+      } catch (error) {
+        paperNotesOutput.textContent = "Something went wrong while generating notes.";
+      } finally {
+        generatePaperNotesBtn.disabled = false;
+      }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      try {
+        await refreshCsrf();
+        await fetch("/auth/logout", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken
+          },
+          body: "{}"
+        });
+      } catch (_) {
+        /* ignore */
+      }
+      window.location.href = "/login";
+    });
+
+    document.getElementById("acctMfaStart").addEventListener("click", async () => {
+      const st = document.getElementById("acctMfaStatus");
+      st.textContent = "";
+      try {
+        const res = await postJson("/auth/mfa/enroll/start", {});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          st.textContent = data.error || "Could not start MFA.";
+          return;
+        }
+        document.getElementById("acctMfaQr").src = data.qrDataUrl || "";
+        st.textContent = "Scan the QR code, then confirm below.";
+      } catch (_) {
+        st.textContent = "Request failed.";
+      }
+    });
+
+    document.getElementById("acctMfaConfirm").addEventListener("click", async () => {
+      const st = document.getElementById("acctMfaStatus");
+      st.textContent = "";
+      const code = document.getElementById("acctMfaCode").value.trim();
+      try {
+        const res = await postJson("/auth/mfa/enroll/confirm", { code });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          st.textContent = data.error || "Could not enable MFA.";
+          return;
+        }
+        st.textContent = "MFA enabled. Next sign-in will ask for a code.";
+        document.getElementById("acctMfaCode").value = "";
+      } catch (_) {
+        st.textContent = "Request failed.";
+      }
+    });
+
+    document.getElementById("loadAuditBtn").addEventListener("click", async () => {
+      const out = document.getElementById("auditOut");
+      out.textContent="Loading…";
+      try {
+        const res = await fetch("/admin/audit-log?limit=200", { credentials: "same-origin" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          out.textContent = data.error || "Not authorized.";
+          return;
+        }
+        out.textContent = (data.lines || []).join("\n");
+      } catch (_) {
+        out.textContent = "Request failed.";
+      }
+    });
+
+    document.getElementById("changePwdBtn").addEventListener("click", async () => {
+      const st = document.getElementById("pwdStatus");
+      st.textContent = "";
+      const currentPassword = document.getElementById("curPwd").value;
+      const newPassword = document.getElementById("newPwd").value;
+      try {
+        const res = await postJson("/auth/change-password", { currentPassword, newPassword });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          st.textContent = data.error || "Could not update password.";
+          return;
+        }
+        st.textContent = "Password updated.";
+        document.getElementById("curPwd").value = "";
+        document.getElementById("newPwd").value = "";
+      } catch (_) {
+        st.textContent = "Request failed.";
+      }
+    });
+
+    window.addEventListener("load", async () => {
+      try {
+        const me = await fetch("/auth/me", { credentials: "same-origin" });
+        const meData = await me.json();
+        if (!meData.authenticated || !meData.user || !meData.user.mfaVerified || meData.user.mustEnrollMfa) {
+          window.location.href = "/login";
+          return;
+        }
+        document.getElementById("whoami").textContent = meData.user.email + (meData.user.role === "admin" ? " (admin)" : "");
+        if (!meData.user.mfaEnabled) {
+          document.getElementById("optionalMfaWrap").classList.remove("hidden");
+        }
+        if (meData.user.role === "admin") {
+          document.getElementById("adminAuditWrap").classList.remove("hidden");
+        }
+        await refreshCsrf();
+      } catch (_) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const tryBindBotpressEvents = () => {
+        if (!window.botpress || typeof window.botpress.on !== "function") {
+          setTimeout(tryBindBotpressEvents, 500);
+          return;
+        }
+
+        window.botpress.on("conversation", (conversationId) => {
+          if (conversationId) {
+            currentConversationId = String(conversationId);
+          }
+        });
+
+        window.botpress.on("message", async (message) => {
+          await saveChatMessageToBackend(message);
+        });
+      };
+
+      tryBindBotpressEvents();
+      loadFolders();
+    });
+  </script>
+
+  <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js"></script>
+  <script src="https://files.bpcontent.cloud/2026/03/23/12/20260323121155-XIB1UY4M.js" defer></script>
+</body>
+</html>

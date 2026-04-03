@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — PGPT Secured</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f8fafc;
+      color: #111827;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .panel {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .muted { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-top: 12px; }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary { background: #111827; margin-top: 10px; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .err { color: #b91c1c; font-size: 14px; margin-top: 12px; }
+    .hint { font-size: 12px; color: #6b7280; margin-top: 6px; }
+    .mfa-panel { display: none; margin-top: 16px; }
+    .mfa-panel.active { display: block; }
+    #qrMfa { max-width: 100%; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>PGPT Secured</h1>
+    <p class="muted">Sign in to upload documents, chat, and generate notes.</p>
+
+    <div id="formLogin">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="username" />
+      <label for="password">Password</label>
+      <input type="password" id="password" autocomplete="current-password" />
+      <p class="hint">Password must be at least 12 characters and include upper, lower, number, and symbol.</p>
+      <button type="button" id="btnLogin">Sign in</button>
+      <button type="button" class="secondary" id="btnRegister">Create account</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+
+    <div id="panelMfaVerify" class="mfa-panel">
+      <p class="muted">Enter the code from your authenticator app.</p>
+      <label for="mfaCode">6-digit code</label>
+      <input type="text" id="mfaCode" inputmode="numeric" autocomplete="one-time-code" />
+      <button type="button" id="btnMfaVerify">Verify</button>
+      <div class="err" id="mfaErr"></div>
+    </div>
+
+    <div id="panelMfaEnroll" class="mfa-panel">
+      <p class="muted">Admin accounts must enroll MFA. Scan this QR in your authenticator app, then confirm with a code.</p>
+      <img id="qrMfa" alt="MFA QR" />
+      <label for="mfaEnrollCode">Confirm code</label>
+      <input type="text" id="mfaEnrollCode" inputmode="numeric" autocomplete="one-time-code" />
+      <button type="button" id="btnMfaStart">Generate QR</button>
+      <button type="button" id="btnMfaEnrollConfirm">Confirm &amp; enable MFA</button>
+      <div class="err" id="mfaEnrollErr"></div>
+    </div>
+  </div>
+
+  <script>
+    let csrfToken = "";
+
+    async function refreshCsrf() {
+      const res = await fetch("/auth/csrf-token", { credentials: "same-origin" });
+      const data = await res.json();
+      csrfToken = data.csrfToken || "";
+    }
+
+    function authHeaders() {
+      return {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken
+      };
+    }
+
+    async function goApp() {
+      await refreshCsrf();
+      window.location.href = "/";
+    }
+
+    document.getElementById("btnLogin").addEventListener("click", async () => {
+      const errEl = document.getElementById("loginErr");
+      errEl.textContent = "";
+      await refreshCsrf();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      try {
+        const res = await fetch("/auth/login", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: authHeaders(),
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errEl.textContent = data.error || "Login failed.";
+          return;
+        }
+        if (data.next === "mfa_verify") {
+          document.getElementById("formLogin").style.display = "none";
+          document.getElementById("panelMfaVerify").classList.add("active");
+          return;
+        }
+        if (data.next === "mfa_enroll") {
+          document.getElementById("formLogin").style.display = "none";
+          document.getElementById("panelMfaEnroll").classList.add("active");
+          return;
+        }
+        await goApp();
+      } catch {
+        errEl.textContent = "Network error.";
+      }
+    });
+
+    document.getElementById("btnRegister").addEventListener("click", async () => {
+      const errEl = document.getElementById("loginErr");
+      errEl.textContent = "";
+      await refreshCsrf();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      try {
+        const res = await fetch("/auth/register", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: authHeaders(),
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const backendMsg = data.message || data.error || "Registration failed.";
+          errEl.textContent = `[${res.status}] ${backendMsg}`;
+          return;
+        }
+        await goApp();
+      } catch {
+        errEl.textContent = "Network error.";
+      }
+    });
+
+    document.getElementById("btnMfaVerify").addEventListener("click", async () => {
+      const errEl = document.getElementById("mfaErr");
+      errEl.textContent = "";
+      await refreshCsrf();
+      const code = document.getElementById("mfaCode").value.trim();
+      try {
+        const res = await fetch("/auth/mfa/verify-login", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: authHeaders(),
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errEl.textContent = data.error || "Verification failed.";
+          return;
+        }
+        await goApp();
+      } catch {
+        errEl.textContent = "Network error.";
+      }
+    });
+
+    document.getElementById("btnMfaStart").addEventListener("click", async () => {
+      const errEl = document.getElementById("mfaEnrollErr");
+      errEl.textContent = "";
+      await refreshCsrf();
+      try {
+        const res = await fetch("/auth/mfa/enroll/start", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: authHeaders(),
+          body: JSON.stringify({})
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errEl.textContent = data.error || "Could not start MFA.";
+          return;
+        }
+        document.getElementById("qrMfa").src = data.qrDataUrl || "";
+      } catch {
+        errEl.textContent = "Network error.";
+      }
+    });
+
+    document.getElementById("btnMfaEnrollConfirm").addEventListener("click", async () => {
+      const errEl = document.getElementById("mfaEnrollErr");
+      errEl.textContent = "";
+      await refreshCsrf();
+      const code = document.getElementById("mfaEnrollCode").value.trim();
+      try {
+        const res = await fetch("/auth/mfa/enroll/confirm", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: authHeaders(),
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errEl.textContent = data.error || "Enrollment failed.";
+          return;
+        }
+        await goApp();
+      } catch {
+        errEl.textContent = "Network error.";
+      }
+    });
+
+    (async function init() {
+      try {
+        const res = await fetch("/auth/me", { credentials: "same-origin" });
+        const data = await res.json();
+        await refreshCsrf();
+        if (!data.authenticated) {
+          return;
+        }
+        const u = data.user;
+        if (u.mustEnrollMfa) {
+          document.getElementById("formLogin").style.display = "none";
+          document.getElementById("panelMfaEnroll").classList.add("active");
+          return;
+        }
+        if (!u.mfaVerified) {
+          document.getElementById("formLogin").style.display = "none";
+          document.getElementById("panelMfaVerify").classList.add("active");
+          return;
+        }
+        window.location.href = "/";
+      } catch {
+        /* stay on login */
+      }
+    })();
+  </script>
+</body>
+</html>

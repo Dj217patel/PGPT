@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: judo_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: judo_user
+      POSTGRES_PASSWORD: judo_pass
+      POSTGRES_DB: judo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - judo_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  judo_postgres_data:
